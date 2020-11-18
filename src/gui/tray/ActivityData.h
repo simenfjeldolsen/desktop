@@ -27,6 +27,13 @@ namespace OCC {
 
 class ActivityLink
 {
+    Q_GADGET
+
+    Q_PROPERTY(QString label MEMBER _label)
+    Q_PROPERTY(QString link MEMBER _link)
+    Q_PROPERTY(QByteArray verb MEMBER _verb)
+    Q_PROPERTY(bool isPrimary MEMBER _isPrimary)
+
 public:
     QString _label;
     QString _link;
