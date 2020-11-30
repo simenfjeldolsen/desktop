@@ -380,7 +380,13 @@ void ActivityListModel::removeActivityFromActivityList(int row)
 {
     Activity activity = _finalList.at(row);
     removeActivityFromActivityList(activity);
-    combineActivityLists();
+
+    // remove from model
+    if (row >= 0 && row < _finalList.size()) {
+        beginRemoveRows(QModelIndex(), row, row);
+        _finalList.removeAt(row);
+        endRemoveRows();
+    }
 }
 
 void ActivityListModel::addSyncFileItemToActivityList(Activity activity)
@@ -413,7 +419,6 @@ void ActivityListModel::removeActivityFromActivityList(Activity activity)
     if (index != -1) {
         qCInfo(lcActivity) << "Activity/Notification/Error successfully removed from the list.";
         qCInfo(lcActivity) << "Updating Activity/Notification/Error view.";
-        combineActivityLists();
     }
 }
 
