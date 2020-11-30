@@ -518,7 +518,11 @@ Window {
             delegate: RowLayout {
                 id: activityItem
 
-                property variant links: model.links
+                readonly property variant links: model.links
+
+                readonly property int itemIndex: model.index
+
+                readonly property int totalActions: link === "" ? links.length : links.length + 1
 
                 width: parent.width
                 height: Style.trayWindowHeaderHeight
@@ -528,10 +532,6 @@ Window {
                 Accessible.name: path !== "" ? qsTr("Open %1 locally").arg(displayPath)
                                              : message
                 Accessible.onPressAction: activityMouseArea.clicked()
-
-                property int itemIndex: model.index
-
-                readonly property int totalActions: link === "" ? links.length : links.length + 1
 
                 MouseArea {
                     id: activityMouseArea
@@ -656,14 +656,14 @@ Window {
                             textBgColor: "transparent"
                             textBgColorHovered: Style.ncBlue
 
-                            onClicked: activityModel.triggerAction(activityItem.itemIndex, actionIndex)
-
-                            tooltipText: !primary ? activityItem.links[actionIndex].label : ""
+                            tooltipText: activityItem.links[actionIndex].label
 
                             Layout.minimumWidth: primary ? 80 : -1
                             Layout.minimumHeight: parent.height
 
                             Layout.preferredWidth: primary ? -1 : parent.height
+
+                            onClicked: activityModel.triggerAction(activityItem.itemIndex, actionIndex)
                         }
 
                     }
@@ -687,12 +687,17 @@ Window {
                         ToolTip.visible: hovered
                         ToolTip.delay: 1000
                         ToolTip.text: qsTr("Show all actions")
+
+                        Accessible.role: Accessible.Button
+                        Accessible.name: qsTr("Show all actions")
+                        Accessible.onPressAction: moreActionsButton.clicked()
+
                         onClicked:  moreActionsButtonContextMenu.popup();
 
                         Connections {
                             target: trayWindow
                             onActiveChanged: {
-                                if (!trayWindow.active && moreActionsButtonContextMenu.opened) {
+                                if (!trayWindow.active) {
                                     moreActionsButtonContextMenu.close();
                                 }
                             }
@@ -702,31 +707,22 @@ Window {
                             target: activityListView
 
                             onMovementStarted: {
-                                if (moreActionsButtonContextMenu.opened) {
-                                    moreActionsButtonContextMenu.close();
-                                }
+                                moreActionsButtonContextMenu.close();
                             }
                         }
-
-                        Accessible.role: Accessible.Button
-                        Accessible.name: qsTr("Show all actions")
-                        Accessible.onPressAction: moreActionsButton.clicked()
 
                         Container {
                             id: moreActionsButtonContextMenuContainer
                             visible: moreActionsButtonContextMenu.opened
+
+                            width: moreActionsButtonContextMenu.width
+                            height: moreActionsButtonContextMenu.height
+                            anchors.right: moreActionsButton.right
+                            anchors.top: moreActionsButton.top
+
                             Menu {
                                 id: moreActionsButtonContextMenu
                                 anchors.centerIn: parent
-
-                                onOpenedChanged: {
-                                    if (opened) {
-                                        moreActionsButtonContextMenuContainer.width = moreActionsButtonContextMenu.width;
-                                        moreActionsButtonContextMenuContainer.height = moreActionsButtonContextMenu.height;
-                                        moreActionsButtonContextMenuContainer.anchors.right = moreActionsButton.right;
-                                        moreActionsButtonContextMenuContainer.anchors.top = moreActionsButton.top;
-                                    }
-                                }
 
                                 Repeater {
                                     id: moreActionsButtonContextMenuRepeater

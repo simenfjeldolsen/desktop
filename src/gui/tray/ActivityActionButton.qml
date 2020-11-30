@@ -2,7 +2,8 @@ import QtQuick 2.5
 import QtQuick.Controls 2.3
 import Style 1.0
 
-Rectangle {
+Item {
+    id: root
     readonly property bool labelVisible: label.visible
     readonly property bool iconVisible: icon.visible
 
@@ -34,20 +35,22 @@ Rectangle {
 
     signal clicked()
 
-    color: "transparent"
+    Accessible.role: Accessible.Button
+    Accessible.name: text !== "" ? text : (tooltipText !== "" ? tooltipText : qsTr("Activity action button"))
+    Accessible.onPressAction: clicked()
 
     // background with border around the Text
     Rectangle {
         visible: parent.labelVisible
 
-        anchors.fill: parent.labelVisible ? parent : null
+        anchors.fill: parent
 
         // padding
         anchors.topMargin: 10
         anchors.bottomMargin: 10
 
         border.color: parent.textBorderColor
-        border.width: parent.labelVisible ? 1 : 0
+        border.width: 1
 
         color: parent.hovered ? parent.textBgColorHovered : parent.textBgColor
 
@@ -58,7 +61,7 @@ Rectangle {
     Rectangle {
         visible: parent.iconVisible
 
-        anchors.fill: visible ? parent : null
+        anchors.fill: parent
 
         color: parent.hovered ? parent.iconBgColorHovered : parent.iconBgColor
     }
@@ -70,9 +73,12 @@ Rectangle {
         text: parent.text
         font: parent.font
         color: parent.hovered ? parent.textColorHovered : parent.textColor
-
-        anchors.centerIn: parent
-        elide: Text.ElideNone
+        anchors.fill: parent
+        anchors.leftMargin: 10
+        anchors.rightMargin: 10
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+        elide: Text.ElideRight
     }
 
     // icon
@@ -99,8 +105,4 @@ Rectangle {
         delay: 1000
         visible: text != "" && parent.hovered
     }
-
-    Accessible.role: Accessible.Button
-    Accessible.name: text !== "" ? text : (tooltipText !== "" ? tooltipText : qsTr("Activity action button"))
-    Accessible.onPressAction: clicked()
 }

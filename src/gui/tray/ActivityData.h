@@ -32,13 +32,13 @@ class ActivityLink
     Q_PROPERTY(QString label MEMBER _label)
     Q_PROPERTY(QString link MEMBER _link)
     Q_PROPERTY(QByteArray verb MEMBER _verb)
-    Q_PROPERTY(bool isPrimary MEMBER _isPrimary)
+    Q_PROPERTY(bool primary MEMBER _primary)
 
 public:
     QString _label;
     QString _link;
     QByteArray _verb;
-    bool _isPrimary;
+    bool _primary;
 };
 
 /* ==================================================================== */

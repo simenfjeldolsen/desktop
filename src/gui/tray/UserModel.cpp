@@ -331,7 +331,7 @@ void User::slotAddError(const QString &folderAlias, const QString &message, Erro
             link._label = tr("Retry all uploads");
             link._link = folderInstance->path();
             link._verb = "";
-            link._isPrimary = true;
+            link._primary = true;
             activity._links.append(link);
         }
 
