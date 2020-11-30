@@ -508,6 +508,8 @@ Window {
                 id: listViewScrollbar
             }
 
+            readonly property int maxActionButtons: 2
+
             keyNavigationEnabled: true
 
             Accessible.role: Accessible.List
@@ -521,8 +523,6 @@ Window {
                 readonly property variant links: model.links
 
                 readonly property int itemIndex: model.index
-
-                readonly property int totalActions: link === "" ? links.length : links.length + 1
 
                 width: parent.width
                 height: Style.trayWindowHeaderHeight
@@ -634,7 +634,7 @@ Window {
                     }
 
                     Repeater {
-                        model: activityItem.links.length > 2 ? 1 : activityItem.links.length
+                        model: activityItem.links.length > activityListView.maxActionButtons ? 1 : activityItem.links.length
 
                         ActivityActionButton {
                             id: activityActionButton
@@ -677,7 +677,7 @@ Window {
 
                         flat: true
                         hoverEnabled: true
-                        visible: activityItem.links.length > 2
+                        visible: activityItem.links.length > activityListView.maxActionButtons
                         display: AbstractButton.IconOnly
                         icon.source: "qrc:///client/theme/more.svg"
                         icon.color: "transparent"
@@ -686,10 +686,10 @@ Window {
                         }
                         ToolTip.visible: hovered
                         ToolTip.delay: 1000
-                        ToolTip.text: qsTr("Show all actions")
+                        ToolTip.text: qsTr("Show more actions")
 
                         Accessible.role: Accessible.Button
-                        Accessible.name: qsTr("Show all actions")
+                        Accessible.name: qsTr("Show more actions")
                         Accessible.onPressAction: moreActionsButton.clicked()
 
                         onClicked:  moreActionsButtonContextMenu.popup();
@@ -720,18 +720,44 @@ Window {
                             anchors.right: moreActionsButton.right
                             anchors.top: moreActionsButton.top
 
+                            // transform model to contain indexed actions with primary action filtered out
+                            function actionListToContextMenuList(actionList, maxButtons) {
+                                // early exit when we have less than maxButtons actions
+                                if (actionList.length <= maxButtons) {
+                                    return actionList;
+                                }
+
+                                // add index to every action
+                                var actionsWithIndices = actionList.map(function(action, index) {
+
+                                    var actionWithIndex = { actionIndex: index };
+
+                                    Object.assign(actionWithIndex, action)
+
+                                    return actionWithIndex;
+                                });
+
+                                // filter 'primary' action out
+                                var filteredActions = actionsWithIndices.filter(function(action) {
+                                    return action.primary !== true;
+                                });
+
+                                return filteredActions;
+                            }
+
                             Menu {
                                 id: moreActionsButtonContextMenu
                                 anchors.centerIn: parent
 
                                 Repeater {
                                     id: moreActionsButtonContextMenuRepeater
-                                    model: activityItem.links
+                                    model: moreActionsButtonContextMenuContainer.actionListToContextMenuList(activityItem.links, activityListView.maxActionButtons)
 
                                     delegate: MenuItem {
                                         id: moreActionsButtonContextMenuEntry
+                                        readonly property int actionIndex: moreActionsButtonContextMenuRepeater.model[model.index].actionIndex
                                         text: moreActionsButtonContextMenuRepeater.model[model.index].label
-                                        onTriggered: activityModel.triggerAction(activityItem.itemIndex, model.index)
+                                        onTriggered: activityModel.triggerAction(activityItem.itemIndex, actionIndex)
                                     }
                                 }
                             }
