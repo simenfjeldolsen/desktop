@@ -291,8 +291,14 @@ void ExcludedFiles::setClientVersion(ExcludedFiles::Version version)
 bool ExcludedFiles::loadExcludeFile(const QString &basePath, const QString & file)
 {
     QFile f(file);
-    if (!f.open(QIODevice::ReadOnly))
+    if (!f.open(QIODevice::ReadOnly)) {
+        if (!f.exists()) {
+            _excludeFiles.remove(basePath);
+            return true;
+        }
+
         return false;
+    }
 
     QStringList patterns;
     while (!f.atEnd()) {
