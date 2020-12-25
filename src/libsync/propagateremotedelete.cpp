@@ -99,8 +99,7 @@ void PropagateRemoteDelete::start()
             createDeleteJob(_item->_file);
         });
         connect(job, &OCC::UnSetEncryptionFlagApiJob::error, this, [this] (const QByteArray fileId, int httpReturnCode) {
-            int a = 5;
-            a = 6;
+            done(SyncFileItem::FatalError);
         });
         job->start();
     }
