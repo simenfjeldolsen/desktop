@@ -286,6 +286,35 @@ bool SetEncryptionFlagApiJob::finished()
     return true;
 }
 
+UnSetEncryptionFlagApiJob::UnSetEncryptionFlagApiJob(const AccountPtr& account, const QByteArray& fileId, QObject* parent)
+: AbstractNetworkJob(account, baseUrl() + QStringLiteral("encrypted/") + fileId, parent), _fileId(fileId)
+{
+}
+
+void UnSetEncryptionFlagApiJob::start()
+{
+    QNetworkRequest req;
+    req.setRawHeader("OCS-APIREQUEST", "true");
+    QUrl url = Utility::concatUrlPath(account()->url(), path());
+
+    qCInfo(lcCseJob()) << "marking the file with id" << _fileId << "as encrypted";
+    sendRequest("DELETE", url, req);
+    AbstractNetworkJob::start();
+}
+
+bool UnSetEncryptionFlagApiJob::finished()
+{
+    int retCode = reply()->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    qCInfo(lcCseJob()) << "Encryption Flag Return" << reply()->readAll();
+    if (retCode == 200) {
+        emit success(_fileId);
+    } else {
+        qCInfo(lcCseJob()) << "Setting the encrypted flag failed with" << path() << errorString() << retCode;
+        emit error(_fileId, retCode);
+    }
+    return true;
+}
+
 StorePrivateKeyApiJob::StorePrivateKeyApiJob(const AccountPtr& account, const QString& path, QObject* parent)
 : AbstractNetworkJob(account, path, parent)
 {

@@ -13,8 +13,10 @@
  */
 
 #include "propagateremotemove.h"
+#include "propagateremotemoveencrypted.h"
 #include "propagatorjobs.h"
 #include "owncloudpropagator_p.h"
+#include "clientsideencryptionjobs.h"
 #include "account.h"
 #include "common/syncjournalfilerecord.h"
 #include "filesystem.h"
@@ -149,10 +151,36 @@ void PropagateRemoteMove::start()
     }
     qCDebug(lcPropagateRemoteMove) << remoteSource << remoteDestination;
 
-    _job = new MoveJob(propagator()->account(), remoteSource, remoteDestination, this);
-    connect(_job.data(), &MoveJob::finishedSignal, this, &PropagateRemoteMove::slotMoveJobFinished);
-    propagator()->_activeJobList.append(this);
-    _job->start();
+    if (!_item->_encryptedFileName.isEmpty()) {
+        _moveEncryptedHelper = new PropagateRemoteMoveEncrypted(propagator(), _item, this);
+        connect(_moveEncryptedHelper, &PropagateRemoteMoveEncrypted::finished, this, [this, &remoteSource, &remoteDestination] (bool success) {
+            Q_UNUSED(success) // Should we skip file deletion in case of failure?
+            _job = new MoveJob(propagator()->account(), remoteSource, remoteDestination, this);
+            connect(_job.data(), &MoveJob::finishedSignal, this, &PropagateRemoteMove::slotMoveJobFinished);
+            propagator()->_activeJobList.append(this);
+            _job->start();
+        });
+        _moveEncryptedHelper->start();
+    } else if (_item->_isEncrypted) {
+        auto job = new OCC::UnSetEncryptionFlagApiJob(propagator()->account(), _item->_fileId, this);
+        connect(job, &OCC::UnSetEncryptionFlagApiJob::success, this, [this, &remoteSource, &remoteDestination] (const QByteArray fileId) {
+            _job = new MoveJob(propagator()->account(), remoteSource, remoteDestination, this);
+            connect(_job.data(), &MoveJob::finishedSignal, this, &PropagateRemoteMove::slotMoveJobFinished);
+            propagator()->_activeJobList.append(this);
+            _job->start();
+        });
+        connect(job, &OCC::UnSetEncryptionFlagApiJob::error, this, [this] (const QByteArray fileId, int httpReturnCode) {
+            int a = 5;
+            a = 6;
+        });
+        job->start();
+    }
+    else {
+        _job = new MoveJob(propagator()->account(), remoteSource, remoteDestination, this);
+        connect(_job.data(), &MoveJob::finishedSignal, this, &PropagateRemoteMove::slotMoveJobFinished);
+        propagator()->_activeJobList.append(this);
+        _job->start();
+    }
 }
 
 void PropagateRemoteMove::abort(PropagatorJob::AbortType abortType)

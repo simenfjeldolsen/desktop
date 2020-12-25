@@ -18,6 +18,8 @@
 
 namespace OCC {
 
+class PropagateRemoteMoveEncrypted;
+
 /**
  * @brief The MoveJob class
  * @ingroup libsync
@@ -49,6 +51,8 @@ class PropagateRemoteMove : public PropagateItemJob
 {
     Q_OBJECT
     QPointer<MoveJob> _job;
+    PropagateRemoteMoveEncrypted *_moveEncryptedHelper = nullptr;
+
 
 public:
     PropagateRemoteMove(OwncloudPropagator *propagator, const SyncFileItemPtr &item)

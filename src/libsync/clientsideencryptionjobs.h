@@ -130,6 +130,26 @@ private:
     QByteArray _fileId;
 };
 
+class OWNCLOUDSYNC_EXPORT UnSetEncryptionFlagApiJob : public AbstractNetworkJob
+{
+    Q_OBJECT
+public:
+    explicit UnSetEncryptionFlagApiJob(const AccountPtr &account, const QByteArray& fileId, QObject *parent = nullptr);
+
+public slots:
+    void start() override;
+
+protected:
+    bool finished() override;
+
+signals:
+    void success(const QByteArray fileId);
+    void error(const QByteArray fileId, int httpReturnCode);
+
+private:
+    QByteArray _fileId;
+};
+
 class OWNCLOUDSYNC_EXPORT LockEncryptFolderApiJob : public AbstractNetworkJob
 {
     Q_OBJECT

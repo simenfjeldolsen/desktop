@@ -1,0 +1,43 @@
+#ifndef PROPAGATEREMOTEMOVEENCRYPTED_H
+#define PROPAGATEREMOTEMOVEENCRYPTED_H
+
+#include <QObject>
+#include <QElapsedTimer>
+
+#include "syncfileitem.h"
+
+namespace OCC {
+
+class OwncloudPropagator;
+class PropagateRemoteMoveEncrypted : public QObject
+{
+    Q_OBJECT
+public:
+    PropagateRemoteMoveEncrypted(OwncloudPropagator *_propagator, SyncFileItemPtr item, QObject *parent);
+
+    QByteArray folderToken();
+    void unlockFolder();
+
+    void start();
+
+signals:
+    void finished(bool success);
+    void folderUnlocked();
+
+private:
+    void slotFolderEncryptedIdReceived(const QStringList &list);
+    void slotTryLock(const QByteArray &folderId);
+    void slotFolderLockedSuccessfully(const QByteArray &fileId, const QByteArray &token);
+    void slotFolderEncryptedMetadataReceived(const QJsonDocument &json, int statusCode);
+    void taskFailed();
+
+    OwncloudPropagator *_propagator;
+    SyncFileItemPtr _item;
+    QByteArray _folderToken;
+    QByteArray _folderId;
+    bool _folderLocked = false;
+};
+
+}
+
+#endif // PROPAGATEREMOTEMOVEENCRYPTED_H

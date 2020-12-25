@@ -18,6 +18,8 @@
 #include "account.h"
 #include "common/asserts.h"
 
+#include "clientsideencryptionjobs.h"
+
 #include <QLoggingCategory>
 
 namespace OCC {
@@ -91,7 +93,18 @@ void PropagateRemoteDelete::start()
             createDeleteJob(_item->_encryptedFileName);
         });
         _deleteEncryptedHelper->start();
-    } else {
+    } else if (_item->_isEncrypted) {
+        auto job = new OCC::UnSetEncryptionFlagApiJob(propagator()->account(), _item->_fileId, this);
+        connect(job, &OCC::UnSetEncryptionFlagApiJob::success, this, [this] (const QByteArray fileId) {
+            createDeleteJob(_item->_file);
+        });
+        connect(job, &OCC::UnSetEncryptionFlagApiJob::error, this, [this] (const QByteArray fileId, int httpReturnCode) {
+            int a = 5;
+            a = 6;
+        });
+        job->start();
+    }
+    else {
         createDeleteJob(_item->_file);
     }
 }
