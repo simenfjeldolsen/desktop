@@ -136,6 +136,28 @@ void ProcessDirectoryJob::process()
     //
     // Iterate over entries and process them
     //
+
+    QStringList entryKeys;
+    QVector<Entries> entryValues;
+
+    Entries entry1;
+    Entries entry2;
+
+    int i = 0;
+
+    for (const auto &f : entries) {
+        entryKeys.push_back(f.first);
+        entryValues.push_back(f.second);
+        if (i == 0) {
+            entry1 = f.second;
+        }
+        else if (i == 1) {
+            entry2 = f.second;
+        }
+        ++i;
+    }
+
+
     for (const auto &f : entries) {
         const auto &e = f.second;
 
@@ -879,6 +901,13 @@ void ProcessDirectoryJob::processFileAnalyzeLocalInfo(
         dbError();
         return;
     }
+
+    if (!base._e2eMangledName.isEmpty()) {
+        item->_encryptedFileName = base._e2eMangledName;
+    } else if (base._isE2eEncrypted) {
+        item->_isEncrypted = true;
+    }
+
     const auto originalPath = QString::fromUtf8(base._path);
 
     // Function to gradually check conditions for accepting a move-candidate

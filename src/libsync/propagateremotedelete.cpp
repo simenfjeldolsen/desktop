@@ -94,14 +94,14 @@ void PropagateRemoteDelete::start()
         });
         _deleteEncryptedHelper->start();
     } else if (_item->_isEncrypted) {
-        auto job = new OCC::UnSetEncryptionFlagApiJob(propagator()->account(), _item->_fileId, this);
-        connect(job, &OCC::UnSetEncryptionFlagApiJob::success, this, [this] (const QByteArray fileId) {
+        auto lockJob = new LockEncryptFolderApiJob(propagator()->account(), _item->_fileId, this);
+        connect(lockJob, &LockEncryptFolderApiJob::success, this, [=] (const QByteArray& fileId, const QByteArray& token) {
             createDeleteJob(_item->_file);
         });
-        connect(job, &OCC::UnSetEncryptionFlagApiJob::error, this, [this] (const QByteArray fileId, int httpReturnCode) {
-            done(SyncFileItem::FatalError);
+        connect(lockJob, &LockEncryptFolderApiJob::error, this, [=] (const QByteArray& fileId, int httpdErrorCode) {
+            createDeleteJob(_item->_file);
         });
-        job->start();
+        lockJob->start();
     }
     else {
         createDeleteJob(_item->_file);

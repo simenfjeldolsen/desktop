@@ -71,5 +71,9 @@ public:
 private slots:
     void slotMoveJobFinished();
     void finalize();
+
+private:
+    QByteArray _lockToken;
+    QByteArray _fileId;
 };
 }

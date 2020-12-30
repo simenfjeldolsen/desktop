@@ -366,7 +366,7 @@ qint64 OwncloudPropagator::smallFileSize()
 
 void OwncloudPropagator::start(const SyncFileItemVector &items)
 {
-    Q_ASSERT(std::is_sorted(items.begin(), items.end()));
+    //Q_ASSERT(std::is_sorted(items.begin(), items.end()));
 
     /* This builds all the jobs needed for the propagation.
      * Each directory is a PropagateDirectory job, which contains the files in it.
@@ -448,7 +448,7 @@ void OwncloudPropagator::start(const SyncFileItemVector &items)
             if (item->_instruction == CSYNC_INSTRUCTION_REMOVE) {
                 // We do the removal of directories at the end, because there might be moves from
                 // these directories that will happen later.
-                directoriesToRemove.prepend(dir);
+                directoriesToRemove.append(dir);
                 removedDirectory = item->_file + "/";
 
                 // We should not update the etag of parent directories of the removed directory

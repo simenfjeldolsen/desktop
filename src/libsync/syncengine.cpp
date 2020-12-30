@@ -659,7 +659,21 @@ void SyncEngine::slotDiscoveryFinished()
             _anotherSyncNeeded = ImmediateFollowUp;
         }
 
-        Q_ASSERT(std::is_sorted(_syncItems.begin(), _syncItems.end()));
+       /* SyncFileItemVector vec = _syncItems;
+
+        if (_syncItems.size() > 1) {
+            auto firstItem = _syncItems.front();
+            if (firstItem->_encryptedFileName.isEmpty() && firstItem->_isEncrypted) {
+                _syncItems.pop_front();
+
+                _syncItems.push_back(firstItem);
+            }
+        }
+
+        vec = _syncItems;*/
+
+
+        // Q_ASSERT(std::is_sorted(_syncItems.begin(), _syncItems.end()));
 
         qCInfo(lcEngine) << "#### Reconcile (aboutToPropagate) #################################################### " << _stopWatch.addLapTime(QStringLiteral("Reconcile (aboutToPropagate)")) << "ms";
 
