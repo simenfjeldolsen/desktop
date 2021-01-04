@@ -10,7 +10,7 @@
 
 using namespace OCC;
 
-Q_LOGGING_CATEGORY(PROPAGATE_MOVE_ENCRYPTED, "nextcloud.sync.propagator.move.encrypted")
+Q_LOGGING_CATEGORY(PROPAGATE_REMOVE_ENCRYPTED, "nextcloud.sync.propagator.remove.encrypted")
 
 PropagateRemoteDeleteEncrypted::PropagateRemoteDeleteEncrypted(OwncloudPropagator *propagator, SyncFileItemPtr item, QObject *parent)
     : QObject(parent)
@@ -29,7 +29,7 @@ void PropagateRemoteDeleteEncrypted::start()
 {
     Q_ASSERT(!_item->_encryptedFileName.isEmpty());
     QFileInfo info(_item->_encryptedFileName);
-    qCDebug(PROPAGATE_MOVE_ENCRYPTED) << "Folder is encrypted, let's get the Id from it.";
+    qCDebug(PROPAGATE_REMOVE_ENCRYPTED) << "Folder is encrypted, let's get the Id from it.";
     auto job = new LsColJob(_propagator->account(), info.path(), this);
     job->setProperties({"resourcetype", "http://owncloud.org/ns:fileid"});
     connect(job, &LsColJob::directoryListingSubfolders, this, &PropagateRemoteDeleteEncrypted::slotFolderEncryptedIdReceived);
@@ -39,7 +39,7 @@ void PropagateRemoteDeleteEncrypted::start()
 
 void PropagateRemoteDeleteEncrypted::slotFolderEncryptedIdReceived(const QStringList &list)
 {
-    qCDebug(PROPAGATE_MOVE_ENCRYPTED) << "Received id of folder, trying to lock it so we can prepare the metadata";
+    qCDebug(PROPAGATE_REMOVE_ENCRYPTED) << "Received id of folder, trying to lock it so we can prepare the metadata";
     auto job = qobject_cast<LsColJob *>(sender());
     const ExtraFolderInfo folderInfo = job->_folderInfos.value(list.first());
     slotTryLock(folderInfo.fileId);
@@ -55,7 +55,7 @@ void PropagateRemoteDeleteEncrypted::slotTryLock(const QByteArray &folderId)
 
 void PropagateRemoteDeleteEncrypted::slotFolderLockedSuccessfully(const QByteArray &folderId, const QByteArray &token)
 {
-    qCDebug(PROPAGATE_MOVE_ENCRYPTED) << "Folder id" << folderId << "Locked Successfully for Upload, Fetching Metadata";
+    qCDebug(PROPAGATE_REMOVE_ENCRYPTED) << "Folder id" << folderId << "Locked Successfully for Upload, Fetching Metadata";
     _folderLocked = true;
     _folderToken = token;
     _folderId = folderId;
@@ -69,12 +69,12 @@ void PropagateRemoteDeleteEncrypted::slotFolderLockedSuccessfully(const QByteArr
 void PropagateRemoteDeleteEncrypted::slotFolderEncryptedMetadataReceived(const QJsonDocument &json, int statusCode)
 {
     if (statusCode == 404) {
-        qCDebug(PROPAGATE_MOVE_ENCRYPTED) << "Metadata not found, ignoring.";
+        qCDebug(PROPAGATE_REMOVE_ENCRYPTED) << "Metadata not found, ignoring.";
         emit finished(true);
         return;
     }
 
-    qCDebug(PROPAGATE_MOVE_ENCRYPTED) << "Metadata Received, Preparing it for the new file.";
+    qCDebug(PROPAGATE_REMOVE_ENCRYPTED) << "Metadata Received, Preparing it for the new file.";
 
     // Encrypt File!
     FolderMetadata metadata(_propagator->account(), json.toJson(QJsonDocument::Compact), statusCode);
@@ -99,7 +99,7 @@ void PropagateRemoteDeleteEncrypted::slotFolderEncryptedMetadataReceived(const Q
         return;
     }
 
-    qCDebug(PROPAGATE_MOVE_ENCRYPTED) << "Metadata updated, sending to the server.";
+    qCDebug(PROPAGATE_REMOVE_ENCRYPTED) << "Metadata updated, sending to the server.";
 
     auto job = new UpdateMetadataApiJob(_propagator->account(),
                                         _folderId,
@@ -118,12 +118,12 @@ void PropagateRemoteDeleteEncrypted::unlockFolder()
         return;
     }
 
-    qCDebug(PROPAGATE_MOVE_ENCRYPTED) << "Unlocking folder" << _folderId;
+    qCDebug(PROPAGATE_REMOVE_ENCRYPTED) << "Unlocking folder" << _folderId;
     auto unlockJob = new UnlockEncryptFolderApiJob(_propagator->account(),
                                                    _folderId, _folderToken, this);
 
     connect(unlockJob, &UnlockEncryptFolderApiJob::success, [this] {
-        qCDebug(PROPAGATE_MOVE_ENCRYPTED) << "Folder successfully unlocked" << _folderId;
+        qCDebug(PROPAGATE_REMOVE_ENCRYPTED) << "Folder successfully unlocked" << _folderId;
         _folderLocked = false;
         emit folderUnlocked();
     });
@@ -133,7 +133,7 @@ void PropagateRemoteDeleteEncrypted::unlockFolder()
 
 void PropagateRemoteDeleteEncrypted::taskFailed()
 {
-    qCDebug(PROPAGATE_MOVE_ENCRYPTED) << "Task failed of job" << sender();
+    qCDebug(PROPAGATE_REMOVE_ENCRYPTED) << "Task failed of job" << sender();
     if (_folderLocked) {
         connect(this, &PropagateRemoteDeleteEncrypted::folderUnlocked, this, [this] { emit finished(false); });
         unlockFolder();
