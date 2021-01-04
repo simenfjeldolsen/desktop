@@ -16,7 +16,6 @@
 #include "propagateremotemoveencrypted.h"
 #include "propagatorjobs.h"
 #include "owncloudpropagator_p.h"
-#include "clientsideencryptionjobs.h"
 #include "account.h"
 #include "common/syncjournalfilerecord.h"
 #include "filesystem.h"
@@ -189,26 +188,6 @@ void PropagateRemoteMove::slotMoveJobFinished()
     _item->_httpErrorCode = _job->reply()->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     _item->_responseTimeStamp = _job->responseTimestamp();
     _item->_requestId = _job->requestId();
-
-    if (!_lockToken.isEmpty() && !_fileId.isEmpty()) {
-        auto unlockJob = new UnlockEncryptFolderApiJob(propagator()->account(),
-                                                       _fileId, _lockToken, this);
-
-        connect(unlockJob, &UnlockEncryptFolderApiJob::success, [=](const QByteArray& fileId){
-            Q_UNUSED(fileId)
-            int a = 5;
-            a = 6;
-        });
-        connect(unlockJob, &UnlockEncryptFolderApiJob::error, this, [=] (const QByteArray& fileId, int httpReturnCode) {
-            int a = 5;
-            a = 6;
-        });
-
-        unlockJob->start();
-
-        _lockToken = "";
-        _fileId = "";
-    }
 
     if (err != QNetworkReply::NoError) {
         SyncFileItem::Status status = classifyError(err, _item->_httpErrorCode,
