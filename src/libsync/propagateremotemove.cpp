@@ -152,7 +152,7 @@ void PropagateRemoteMove::start()
     qCDebug(lcPropagateRemoteMove) << remoteSource << remoteDestination;
 
     if (!_item->_encryptedFileName.isEmpty()) {
-        QFileInfo info(_item->_originalFile);
+        QFileInfo info(_item->_encryptedFileName);
         QString root_dir = info.path();
         QFileInfo infoRenamed(_item->_renameTarget);
         QString renameFileName = infoRenamed.fileName();
@@ -295,11 +295,8 @@ void PropagateRemoteMove::start()
             lockJob->start();
 
         });
-        connect(job, &LsColJob::finishedWithError, this, [](QNetworkReply *reply) {
-            auto replyError = reply->error();
-            auto replyErrorString = reply->errorString();
-            int a = 5;
-            a = 6;
+        connect(job, &LsColJob::finishedWithError, this, [=](QNetworkReply *reply) {
+            done(SyncFileItem::NormalError, reply->errorString());
         });
         job->start();
 
