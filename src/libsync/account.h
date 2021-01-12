@@ -35,6 +35,7 @@
 #include <memory>
 #include "capabilities.h"
 #include "clientsideencryption.h"
+#include "websocket.h"
 
 class QSettings;
 class QNetworkReply;
@@ -82,7 +83,7 @@ class OWNCLOUDSYNC_EXPORT Account : public QObject
     Q_PROPERTY(QUrl url MEMBER _url)
 
 public:
-    static AccountPtr create();
+    static AccountPtr create(QSharedPointer<AbstractWebSocket> webSocket = QSharedPointer<AbstractWebSocket>(new WebSocket));
     ~Account();
 
     AccountPtr sharedFromThis();
@@ -239,7 +240,7 @@ public:
     /// Called by network jobs on credential errors, emits invalidCredentials()
     void handleInvalidCredentials();
 
-    ClientSideEncryption* e2e();
+    ClientSideEncryption *e2e();
 
     /// Used in RemoteWipe
     void retrieveAppPassword();
@@ -249,6 +250,11 @@ public:
     /// Direct Editing
     // Check for the directEditing capability
     void fetchDirectEditors(const QUrl &directEditingURL, const QString &directEditingETag);
+
+    bool supportsFilesPushNotifications() const
+    {
+        return isSupportingFilesPushNotifications;
+    }
 
 public slots:
     /// Used when forgetting credentials
@@ -279,13 +285,15 @@ signals:
     /// Used in RemoteWipe
     void appPasswordRetrieved(QString);
 
+    void filesChanged(Account *account);
+
 protected Q_SLOTS:
     void slotCredentialsFetched();
     void slotCredentialsAsked();
     void slotDirectEditingRecieved(const QJsonDocument &json);
 
 private:
-    Account(QObject *parent = nullptr);
+    Account(QObject *parent = nullptr, QSharedPointer<AbstractWebSocket> webSocket = QSharedPointer<AbstractWebSocket>(new WebSocket));
     void setSharedThis(AccountPtr sharedThis);
 
     QWeakPointer<Account> _sharedThis;
@@ -331,6 +339,11 @@ private:
     // Direct Editing
     QString _lastDirectEditingETag;
 
+    QSharedPointer<AbstractWebSocket> _webSocket;
+
+    bool isSupportingFilesPushNotifications = false;
+    bool isAuthenticatedOnWebSocket = false;
+
     /* IMPORTANT - remove later - FIXME MS@2019-12-07 -->
      * TODO: For "Log out" & "Remove account": Remove client CA certs and KEY!
      *
@@ -340,12 +353,22 @@ private:
      *
      *       We introduce this dirty hack here, to allow deleting them upon Remote Wipe.
     */
-    public:
-        void setRemoteWipeRequested_HACK() { _isRemoteWipeRequested_HACK = true; }
-        bool isRemoteWipeRequested_HACK() { return _isRemoteWipeRequested_HACK; }
-    private:
-        bool _isRemoteWipeRequested_HACK = false;
+public:
+    void setRemoteWipeRequested_HACK() { _isRemoteWipeRequested_HACK = true; }
+    bool isRemoteWipeRequested_HACK() { return _isRemoteWipeRequested_HACK; }
+
+private:
+    bool _isRemoteWipeRequested_HACK = false;
     // <-- FIXME MS@2019-12-07
+
+    void connectWebSocket();
+    void disconnectWebSocket();
+    void authenticateOnWebSocket();
+
+private slots:
+    void onWebSocketConnected();
+    void onWebSocketDisconnected();
+    void onWebSocketTextMessageReceived(const QString &message);
 };
 }
 

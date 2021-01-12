@@ -290,7 +290,7 @@ private slots:
 
     void slotReconnectToPushNotificationsForFiles(const Folder::Map &);
 
-    void slotProcessFilesPushNotification(AccountState *accountState);
+    void slotProcessFilesPushNotification(Account *account);
 
 private:
     /** Adds a new folder, does not add it to the account settings and

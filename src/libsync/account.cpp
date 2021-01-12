@@ -50,22 +50,23 @@ namespace OCC {
 Q_LOGGING_CATEGORY(lcAccount, "nextcloud.sync.account", QtInfoMsg)
 const char app_password[] = "_app-password";
 
-Account::Account(QObject *parent)
+Account::Account(QObject *parent, QSharedPointer<AbstractWebSocket> webSocket)
     : QObject(parent)
     , _capabilities(QVariantMap())
     , _davPath(Theme::instance()->webDavPath())
+    , _webSocket(webSocket)
 {
     qRegisterMetaType<AccountPtr>("AccountPtr");
 }
 
-AccountPtr Account::create()
+AccountPtr Account::create(QSharedPointer<AbstractWebSocket> webSocket)
 {
-    AccountPtr acc = AccountPtr(new Account);
+    AccountPtr acc = AccountPtr(new Account(nullptr, webSocket));
     acc->setSharedThis(acc);
 
-        //TODO: This probably needs to have a better
-        // coupling, but it should work for now.
-        acc->e2e()->setAccount(acc);
+    //TODO: This probably needs to have a better
+    // coupling, but it should work for now.
+    acc->e2e()->setAccount(acc);
 
     return acc;
 }
@@ -201,6 +202,9 @@ void Account::setCredentials(AbstractCredentials *cred)
         this, &Account::slotCredentialsFetched);
     connect(_credentials.data(), &AbstractCredentials::asked,
         this, &Account::slotCredentialsAsked);
+
+    // Connect or reconnect to websocket because credentials changed
+    connectWebSocket();
 }
 
 QUrl Account::davUrl() const
@@ -642,22 +646,86 @@ void Account::slotDirectEditingRecieved(const QJsonDocument &json)
         const QString id = editor.value("id").toString();
         const QString name = editor.value("name").toString();
 
-        if(!id.isEmpty() && !name.isEmpty()) {
+        if (!id.isEmpty() && !name.isEmpty()) {
             auto mimeTypes = editor.value("mimetypes").toArray();
             auto optionalMimeTypes = editor.value("optionalMimetypes").toArray();
 
             auto *directEditor = new DirectEditor(id, name);
 
-            foreach(auto mimeType, mimeTypes) {
+            foreach (auto mimeType, mimeTypes) {
                 directEditor->addMimetype(mimeType.toString().toLatin1());
             }
 
-            foreach(auto optionalMimeType, optionalMimeTypes) {
+            foreach (auto optionalMimeType, optionalMimeTypes) {
                 directEditor->addOptionalMimetype(optionalMimeType.toString().toLatin1());
             }
 
             _capabilities.addDirectEditor(directEditor);
         }
+    }
+}
+
+void Account::connectWebSocket()
+{
+    disconnectWebSocket();
+
+    // Check for web socket capability
+    if (!_capabilities.pushNotificationFilesWebSocketAvailable())
+        return;
+
+    isSupportingFilesPushNotifications = true;
+    isAuthenticatedOnWebSocket = false;
+    const auto &webSocketUrl = _capabilities.pushNotificationWebSocketUrl();
+
+    // Disconnect signal handlers
+    disconnect(_webSocket.data(), &AbstractWebSocket::connected, this, &Account::onWebSocketConnected);
+    disconnect(_webSocket.data(), &AbstractWebSocket::connected, this, &Account::onWebSocketConnected);
+
+    // Reconnect them
+    connect(_webSocket.data(), &AbstractWebSocket::connected, this, &Account::onWebSocketConnected);
+    connect(_webSocket.data(), &AbstractWebSocket::disconnected, this, &Account::onWebSocketDisconnected);
+
+    // Open websocket
+    _webSocket->open(QUrl(webSocketUrl));
+}
+
+void Account::disconnectWebSocket()
+{
+    _webSocket->close();
+}
+
+void Account::onWebSocketConnected()
+{
+    disconnect(_webSocket.data(), &AbstractWebSocket::textMessageReceived, this, &Account::onWebSocketTextMessageReceived);
+    connect(_webSocket.data(), &AbstractWebSocket::textMessageReceived, this, &Account::onWebSocketTextMessageReceived);
+
+    authenticateOnWebSocket();
+}
+
+void Account::authenticateOnWebSocket()
+{
+    if (!isAuthenticatedOnWebSocket)
+        return;
+
+    const auto username = _credentials->user();
+    const auto password = _credentials->password();
+    // TODO: Error handling
+    _webSocket->sendTextMessage(username);
+    _webSocket->sendTextMessage(password);
+}
+
+void Account::onWebSocketDisconnected() { }
+
+void Account::onWebSocketTextMessageReceived(const QString &message)
+{
+    // TODO: Try reconnect on authentication failures
+    if (message == "notify_file") {
+        emit filesChanged(this);
+    } else if (message == "authenticated") {
+        isAuthenticatedOnWebSocket = true;
+    } else if (message == "err: Invalid credentials") {
+        isAuthenticatedOnWebSocket = false;
+        // TODO: How to handle this?
     }
 }
 

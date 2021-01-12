@@ -82,6 +82,7 @@ public:
 
     /// Use the account as parent
     explicit AccountState(AccountPtr account);
+
     ~AccountState();
 
     /** Creates an account state from settings and an Account object.
@@ -162,11 +163,6 @@ public:
     ///Asks for user credentials
     void handleInvalidCredentials();
 
-    bool supportsPushNotifications() const
-    {
-        return isSupportingPushNotifications;
-    }
-
 public slots:
     /// Triggers a ping to the server to update state and
     /// connection status and errors.
@@ -175,20 +171,11 @@ public slots:
 private:
     void setState(State state);
     void fetchNavigationApps();
-    void connectWebSocket();
-    void disconnectWebSocket();
-    void authenticateOnWebSocket();
-
-private slots:
-    void onWebSocketConnected();
-    void onWebSocketDisconnected();
-    void onWebSocketTextMessageReceived(const QString &message);
 
 signals:
     void stateChanged(State state);
     void isConnectedChanged();
     void hasFetchedNavigationApps();
-    void filesChanged(AccountState *accountState);
 
 protected Q_SLOTS:
     void slotConnectionValidatorResult(ConnectionValidator::Status status, const QStringList &errors);
@@ -237,14 +224,6 @@ private:
      * Holds the App names and URLs available on the server
      */
     AccountAppList _apps;
-
-    /**
-     * Websocket connection for the account
-     */
-    QWebSocket webSocket;
-
-    bool isSupportingPushNotifications = false;
-    bool isAuthenticatedOnWebSocket = false;
 };
 
 class AccountApp : public QObject

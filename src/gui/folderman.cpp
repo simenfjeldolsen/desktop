@@ -831,7 +831,9 @@ void FolderMan::slotEtagPollTimerTimeout()
     // Some folders need not to be checked because the use the new push notifications
     QList<Folder *> foldersToRun;
     for (auto folder : _folderMap) {
-        if (!folder->accountState()->supportsPushNotifications())
+        const auto account = folder->accountState()->account();
+
+        if (!account->supportsFilesPushNotifications())
             foldersToRun.append(folder);
     }
 
@@ -1655,24 +1657,25 @@ void FolderMan::slotReconnectToPushNotificationsForFiles(const Folder::Map &fold
 {
     // Disconnect the signal handlers
     for (auto folder : folderMap) {
-        disconnect(folder->accountState(), &AccountState::filesChanged, this, &FolderMan::slotProcessFilesPushNotification);
+        const auto account = folder->accountState()->account();
+        disconnect(account.data(), &Account::filesChanged, this, &FolderMan::slotProcessFilesPushNotification);
     }
 
     // Reconnect them
     for (auto folder : folderMap) {
-        auto accountState = folder->accountState();
+        const auto account = folder->accountState()->account();
 
-        if (accountState->supportsPushNotifications()) {
-            connect(accountState, &AccountState::filesChanged, this, &FolderMan::slotProcessFilesPushNotification);
+        if (account->supportsFilesPushNotifications()) {
+            connect(account.data(), &Account::filesChanged, this, &FolderMan::slotProcessFilesPushNotification);
         }
     }
 }
 
-void FolderMan::slotProcessFilesPushNotification(AccountState *accountState)
+void FolderMan::slotProcessFilesPushNotification(Account *account)
 {
     for (auto folder : _folderMap) {
         // Just run on the folders that belong to this account
-        if (folder->accountState() != accountState)
+        if (folder->accountState()->account() != account)
             continue;
 
         runEtagJobIfPossible(folder);
