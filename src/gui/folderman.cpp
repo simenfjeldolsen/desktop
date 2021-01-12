@@ -62,6 +62,7 @@ FolderMan::FolderMan(QObject *parent)
     QObject::connect(&_etagPollTimer, &QTimer::timeout, this, &FolderMan::slotEtagPollTimerTimeout);
     _etagPollTimer.start();
 
+
     _startScheduledSyncTimer.setSingleShot(true);
     connect(&_startScheduledSyncTimer, &QTimer::timeout,
         this, &FolderMan::slotStartScheduledFolderSync);
@@ -77,6 +78,8 @@ FolderMan::FolderMan(QObject *parent)
 
     connect(_lockWatcher.data(), &LockWatcher::fileUnlocked,
         this, &FolderMan::slotWatchedFileUnlocked);
+
+    connect(this, &FolderMan::folderListChanged, this, &FolderMan::slotReconnectToPushNotificationsForFiles);
 }
 
 FolderMan *FolderMan::instance()
@@ -825,30 +828,47 @@ void FolderMan::slotStartScheduledFolderSync()
 
 void FolderMan::slotEtagPollTimerTimeout()
 {
-    ConfigFile cfg;
-    auto polltime = cfg.remotePollInterval();
-
-    for (Folder *f : qAsConst(_folderMap)) {
-        if (!f) {
-            continue;
-        }
-        if (f->isSyncRunning()) {
-            continue;
-        }
-        if (_scheduledFolders.contains(f)) {
-            continue;
-        }
-        if (_disabledFolders.contains(f)) {
-            continue;
-        }
-        if (f->etagJob() || f->isBusy() || !f->canSync()) {
-            continue;
-        }
-        if (f->msecSinceLastSync() < polltime) {
-            continue;
-        }
-        QMetaObject::invokeMethod(f, "slotRunEtagJob", Qt::QueuedConnection);
+    // Some folders need not to be checked because the use the new push notifications
+    QList<Folder *> foldersToRun;
+    for (auto folder : _folderMap) {
+        if (!folder->accountState()->supportsPushNotifications())
+            foldersToRun.append(folder);
     }
+
+    runEtagJobsIfPossible(foldersToRun);
+}
+
+void FolderMan::runEtagJobsIfPossible(const QList<Folder *> &folderMap)
+{
+    for (auto folder : folderMap) {
+        runEtagJobIfPossible(folder);
+    }
+}
+
+void FolderMan::runEtagJobIfPossible(Folder *folder)
+{
+    const ConfigFile cfg;
+    const auto polltime = cfg.remotePollInterval();
+
+    if (!folder) {
+        return;
+    }
+    if (folder->isSyncRunning()) {
+        return;
+    }
+    if (_scheduledFolders.contains(folder)) {
+        return;
+    }
+    if (_disabledFolders.contains(folder)) {
+        return;
+    }
+    if (folder->etagJob() || folder->isBusy() || !folder->canSync()) {
+        return;
+    }
+    if (folder->msecSinceLastSync() < polltime) {
+        return;
+    }
+    QMetaObject::invokeMethod(folder, "slotRunEtagJob", Qt::QueuedConnection);
 }
 
 void FolderMan::slotRemoveFoldersForAccount(AccountState *accountState)
@@ -1628,6 +1648,34 @@ void FolderMan::restartApplication()
         QProcess::startDetached(prg, args);
     } else {
         qCDebug(lcFolderMan) << "On this platform we do not restart.";
+    }
+}
+
+void FolderMan::slotReconnectToPushNotificationsForFiles(const Folder::Map &folderMap)
+{
+    // Disconnect the signal handlers
+    for (auto folder : folderMap) {
+        disconnect(folder->accountState(), &AccountState::filesChanged, this, &FolderMan::slotProcessFilesPushNotification);
+    }
+
+    // Reconnect them
+    for (auto folder : folderMap) {
+        auto accountState = folder->accountState();
+
+        if (accountState->supportsPushNotifications()) {
+            connect(accountState, &AccountState::filesChanged, this, &FolderMan::slotProcessFilesPushNotification);
+        }
+    }
+}
+
+void FolderMan::slotProcessFilesPushNotification(AccountState *accountState)
+{
+    for (auto folder : _folderMap) {
+        // Just run on the folders that belong to this account
+        if (folder->accountState() != accountState)
+            continue;
+
+        runEtagJobIfPossible(folder);
     }
 }
 

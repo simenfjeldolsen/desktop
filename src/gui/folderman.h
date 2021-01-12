@@ -288,6 +288,10 @@ private slots:
      */
     void slotScheduleFolderByTime();
 
+    void slotReconnectToPushNotificationsForFiles(const Folder::Map &);
+
+    void slotProcessFilesPushNotification(AccountState *accountState);
+
 private:
     /** Adds a new folder, does not add it to the account settings and
      *  does not set an account on the new folder.
@@ -312,6 +316,9 @@ private:
     void restartApplication();
 
     void setupFoldersHelper(QSettings &settings, AccountStatePtr account, const QStringList &ignoreKeys, bool backwardsCompatible, bool foldersWithPlaceholders);
+
+    void runEtagJobsIfPossible(const QList<Folder *> &folderMap);
+    void runEtagJobIfPossible(Folder *folder);
 
     QSet<Folder *> _disabledFolders;
     Folder::Map _folderMap;

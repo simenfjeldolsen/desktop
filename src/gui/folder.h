@@ -288,6 +288,9 @@ public:
     /** Whether this folder should show selective sync ui */
     bool supportsSelectiveSync() const;
 
+    /** Wheter the folder can use a web socket for sync communication with the server */
+    bool supportsSyncNotificationsViaWebSocket() const;
+
 signals:
     void syncStateChange();
     void syncStarted();

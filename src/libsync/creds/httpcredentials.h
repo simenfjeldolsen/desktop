@@ -81,7 +81,7 @@ public:
 
     HttpCredentials();
     explicit HttpCredentials(const QString &user, const QString &password,
-            const QByteArray &clientCertBundle = QByteArray(), const QByteArray &clientCertPassword = QByteArray());
+        const QByteArray &clientCertBundle = QByteArray(), const QByteArray &clientCertPassword = QByteArray());
 
     QString authType() const override;
     QNetworkAccessManager *createQNAM() const override;
@@ -91,7 +91,7 @@ public:
     void persist() override;
     QString user() const override;
     // the password or token
-    QString password() const;
+    QString password() const override;
     void invalidateToken() override;
     void forgetSensitiveData() override;
     QString fetchUser();

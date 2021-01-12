@@ -54,15 +54,19 @@ AccountState::AccountState(AccountPtr account)
     connect(account.data(), &Account::credentialsAsked,
         this, &AccountState::slotCredentialsAsked);
 
-    connect(this, &AccountState::isConnectedChanged, [=]{
+    connect(this, &AccountState::isConnectedChanged, [=] {
         // Get the Apps available on the server if we're now connected.
         if (isConnected()) {
             fetchNavigationApps();
+            connectWebSocket();
         }
     });
 }
 
-AccountState::~AccountState() = default;
+AccountState::~AccountState()
+{
+    disconnectWebSocket();
+};
 
 AccountState *AccountState::loadFromSettings(AccountPtr account, QSettings & /*settings*/)
 {
@@ -468,9 +472,9 @@ AccountAppList AccountState::appList() const
     return _apps;
 }
 
-AccountApp* AccountState::findApp(const QString &appId) const
+AccountApp *AccountState::findApp(const QString &appId) const
 {
-    if(!appId.isEmpty()) {
+    if (!appId.isEmpty()) {
         const auto apps = appList();
         const auto it = std::find_if(apps.cbegin(), apps.cend(), [appId](const auto &app) {
             return app->id() == appId;
@@ -481,6 +485,63 @@ AccountApp* AccountState::findApp(const QString &appId) const
     }
 
     return nullptr;
+}
+
+void AccountState::connectWebSocket()
+{
+    if (webSocket.state() != QAbstractSocket::UnconnectedState)
+        return;
+
+    const auto &capabilites = _account->capabilities();
+
+    // Check for web socket capability
+    // TODO: Maybe make this more finer
+    if (!capabilites.pushNotificationFilesWebSocketAvailable())
+        return;
+
+    isSupportingPushNotifications = true;
+    const auto &webSocketUrl = capabilites.pushNotificationWebSocketUrl();
+
+    // Connect signals and open websocket
+    connect(&webSocket, &QWebSocket::connected, this, &AccountState::onWebSocketConnected);
+    connect(&webSocket, &QWebSocket::disconnected, this, &AccountState::onWebSocketDisconnected);
+    webSocket.open(QUrl(webSocketUrl));
+}
+
+void AccountState::disconnectWebSocket()
+{
+    webSocket.close();
+}
+
+void AccountState::onWebSocketConnected()
+{
+    connect(&webSocket, &QWebSocket::textMessageReceived, this, &AccountState::onWebSocketTextMessageReceived);
+    authenticateOnWebSocket();
+}
+
+void AccountState::authenticateOnWebSocket()
+{
+    if (!isAuthenticatedOnWebSocket)
+        return;
+
+    const auto credentials = _account->credentials();
+    const auto username = credentials->user();
+    const auto password = credentials->password();
+    // TODO: Error handling
+    webSocket.sendTextMessage(username);
+    webSocket.sendTextMessage(password);
+}
+
+void AccountState::onWebSocketDisconnected() { }
+
+void AccountState::onWebSocketTextMessageReceived(const QString &message)
+{
+    // TODO: Try reconnect on authentication failures
+    if (message == "notify_file") {
+        emit filesChanged(this);
+    } else if (message == "authenticated") {
+        isAuthenticatedOnWebSocket = true;
+    }
 }
 
 /*-------------------------------------------------------------------------------------*/

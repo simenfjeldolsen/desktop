@@ -176,6 +176,20 @@ bool Capabilities::chunkingNg() const
     return _capabilities["dav"].toMap()["chunking"].toByteArray() >= "1.0";
 }
 
+bool Capabilities::pushNotificationFilesWebSocketAvailable() const
+{
+    if (!_capabilities.contains("notify_push"))
+        return false;
+
+    const auto &types = _capabilities["notify_push"].toMap()["type"].toStringList();
+    return types.contains("files");
+}
+
+QString Capabilities::pushNotificationWebSocketUrl() const
+{
+    return _capabilities["notify_push"].toMap()["endpoints"].toMap()["websocket"].toString();
+}
+
 bool Capabilities::chunkingParallelUploadDisabled() const
 {
     return _capabilities["dav"].toMap()["chunkingParallelUploadDisabled"].toBool();

@@ -19,6 +19,7 @@
 #include <QByteArray>
 #include <QElapsedTimer>
 #include <QPointer>
+#include <QtWebSockets/QWebSocket>
 #include "connectionvalidator.h"
 #include "creds/abstractcredentials.h"
 #include <memory>
@@ -106,7 +107,7 @@ public:
     bool isSignedOut() const;
 
     AccountAppList appList() const;
-    AccountApp* findApp(const QString &appId) const;
+    AccountApp *findApp(const QString &appId) const;
 
     /** A user-triggered sign out which disconnects, stops syncs
      * for the account and forgets the password. */
@@ -161,6 +162,11 @@ public:
     ///Asks for user credentials
     void handleInvalidCredentials();
 
+    bool supportsPushNotifications() const
+    {
+        return isSupportingPushNotifications;
+    }
+
 public slots:
     /// Triggers a ping to the server to update state and
     /// connection status and errors.
@@ -169,11 +175,20 @@ public slots:
 private:
     void setState(State state);
     void fetchNavigationApps();
+    void connectWebSocket();
+    void disconnectWebSocket();
+    void authenticateOnWebSocket();
+
+private slots:
+    void onWebSocketConnected();
+    void onWebSocketDisconnected();
+    void onWebSocketTextMessageReceived(const QString &message);
 
 signals:
     void stateChanged(State state);
     void isConnectedChanged();
     void hasFetchedNavigationApps();
+    void filesChanged(AccountState *accountState);
 
 protected Q_SLOTS:
     void slotConnectionValidatorResult(ConnectionValidator::Status status, const QStringList &errors);
@@ -223,6 +238,13 @@ private:
      */
     AccountAppList _apps;
 
+    /**
+     * Websocket connection for the account
+     */
+    QWebSocket webSocket;
+
+    bool isSupportingPushNotifications = false;
+    bool isAuthenticatedOnWebSocket = false;
 };
 
 class AccountApp : public QObject
@@ -231,7 +253,7 @@ class AccountApp : public QObject
 public:
     AccountApp(const QString &name, const QUrl &url,
         const QString &id, const QUrl &iconUrl,
-        QObject* parent = nullptr);
+        QObject *parent = nullptr);
 
     QString name() const;
     QUrl url() const;

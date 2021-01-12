@@ -27,6 +27,11 @@ QString DummyCredentials::user() const
     return _user;
 }
 
+QString DummyCredentials::password() const
+{
+    Q_ASSERT(false && "NOT IMPLEMENTED YET!");
+}
+
 QNetworkAccessManager *DummyCredentials::createQNAM() const
 {
     return new AccessManager;
